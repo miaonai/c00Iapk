@@ -43,7 +43,9 @@ jobs:
       - name: Test and build release
         run: |
           chmod +x gradlew
-          ./gradlew :app:testDebugUnitTest :app:assembleRelease --stacktrace
+          # Room 2.6 shares its schema output between variants; run them sequentially.
+          ./gradlew :app:testDebugUnitTest --stacktrace
+          ./gradlew :app:assembleRelease --stacktrace
       - name: Verify APK signature and package
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}

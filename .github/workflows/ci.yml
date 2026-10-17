@@ -55,7 +55,7 @@ jobs:
           cp app/build/outputs/apk/release/*.apk dist/c001apk-comments-release.apk
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs dist/c001apk-comments-release.apk | tee dist/signature.txt
           EXPECTED_CERT=$(keytool -exportcert -keystore "$RUNNER_TEMP/release.jks" -alias "$KEY_ALIAS" -storepass:env KEYSTORE_PASSWORD | sha256sum | cut -d' ' -f1)
-          ACTUAL_CERT=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' dist/signature.txt)
+          ACTUAL_CERT=$(sed -n 's/.*Signer.*certificate SHA-256 digest: //p' dist/signature.txt | head -1)
           test "$EXPECTED_CERT" = "$ACTUAL_CERT"
           "$BUILD_TOOLS/aapt" dump badging dist/c001apk-comments-release.apk > dist/package.txt
           (cd dist && sha256sum c001apk-comments-release.apk > SHA256SUMS)

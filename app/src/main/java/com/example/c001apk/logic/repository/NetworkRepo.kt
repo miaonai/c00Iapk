@@ -58,7 +58,7 @@ class NetworkRepo @Inject constructor(
         fromFeedAuthor: Int
     ) = fire {
         Result.success(
-            api2Service.getFeedContentReply(
+            apiService.getFeedContentReply(
                 id,
                 listType,
                 page,

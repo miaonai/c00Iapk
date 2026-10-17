@@ -101,7 +101,9 @@ object PrefManager {
         set(value) = pref.edit().putBoolean("customToken", value).apply()
 
     var VERSION_NAME: String
-        get() = pref.getString("VERSION_NAME", Constants.VERSION_NAME)!!
+        get() = pref.getString("VERSION_NAME", Constants.VERSION_NAME)!!.let {
+            if (it == "13.4.1") Constants.VERSION_NAME else it
+        }
         set(value) = pref.edit().putString("VERSION_NAME", value).apply()
 
     var API_VERSION: String
@@ -109,7 +111,9 @@ object PrefManager {
         set(value) = pref.edit().putString("API_VERSION", value).apply()
 
     var VERSION_CODE: String
-        get() = pref.getString("VERSION_CODE", Constants.VERSION_CODE)!!
+        get() = pref.getString("VERSION_CODE", Constants.VERSION_CODE)!!.let {
+            if (it == "2312121") Constants.VERSION_CODE else it
+        }
         set(value) = pref.edit().putString("VERSION_CODE", value).apply()
 
     var MANUFACTURER: String

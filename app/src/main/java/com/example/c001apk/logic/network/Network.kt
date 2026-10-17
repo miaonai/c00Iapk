@@ -38,7 +38,7 @@ object Network {
         blockStatus: Int,
         fromFeedAuthor: Int
     ) =
-        api2Service.getFeedContentReply(
+        apiService.getFeedContentReply(
             id,
             listType,
             page,

@@ -1,98 +1,82 @@
-name: CI
+name: Android release
 
 on:
   workflow_dispatch:
-  #push:
-    #branches: [ main ]
-   # paths-ignore:
-  #    - '**.md'
-  #    - '**.txt'
-   #   - '.github/**'
-    #  - '.idea/**'
-      #- '!.github/workflows/**'
+    inputs:
+      release_tag:
+        description: 'Existing tag to publish after verification (empty means artifacts only)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 45
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Gradle wrapper validation
-        uses: gradle/actions/wrapper-validation@v6
-
-      - name: set up JDK 17
-        uses: actions/setup-java@v5
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
-          cache: gradle
-
-      - name: Write key
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Restore release signing key
+        env:
+          SIGN_KEYSTORE_BASE64: ${{ secrets.SIGN_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ ! -z "${{ secrets.SIGN_KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.SIGN_KEYSTORE_BASE64 }}" | base64 --decode > key.jks
-            echo KEYSTORE_PATH='${{ github.workspace }}/key.jks' >> local.properties
-            echo KEYSTORE_PASSWORD='${{ secrets.KEYSTORE_PASSWORD }}' >> local.properties
-            echo KEY_ALIAS='${{ secrets.KEY_ALIAS }}' >> local.properties
-            echo KEY_PASSWORD='${{ secrets.KEY_PASSWORD }}' >> local.properties
-          fi
-
-      - name: Cache Gradle Dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            !~/.gradle/caches/build-cache-*
-          key: gradle-deps-core-${{ hashFiles('**/build.gradle.kts', '**/build.gradle', '**/libs.versions.toml') }}
-          restore-keys: |
-            gradle-deps
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build release
-        id: buildRelease
+          set -euo pipefail
+          test -n "$SIGN_KEYSTORE_BASE64"
+          test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
+          umask 077
+          printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          printf 'KEYSTORE_PATH=%s\nKEYSTORE_PASSWORD=%s\nKEY_ALIAS=%s\nKEY_PASSWORD=%s\n' \
+            "$RUNNER_TEMP/release.jks" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > local.properties
+      - name: Test and build release
         run: |
-          ./gradlew :app:assembleRelease --stacktrace --info
-          echo "releaseName=$(ls app/build/outputs/apk/release/*.apk | awk -F '(/|\\.apk)' '{print $6}')" >> $GITHUB_OUTPUT
-
-      - name: Dump manifest merger report on failure
-        if: failure() && steps.buildRelease.outcome == 'failure'
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest :app:assembleRelease --stacktrace
+      - name: Verify APK signature and package
         run: |
-          echo "---- merged manifest ----"
-          cat app/build/intermediates/merged_manifest/release/AndroidManifest.xml 2>/dev/null || true
-          echo "---- manifest merger blame report ----"
-          find app/build/outputs/logs -iname "manifest-merger-*report.txt" -exec cat {} \;
-
-      - name: Upload release
-        if: success()
-        uses: actions/upload-artifact@v6
+          set -euo pipefail
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk dist/c001apk-comments-release.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs dist/c001apk-comments-release.apk | tee dist/signature.txt
+          "$BUILD_TOOLS/aapt" dump badging dist/c001apk-comments-release.apk > dist/package.txt
+          (cd dist && sha256sum c001apk-comments-release.apk > SHA256SUMS)
+          head -1 dist/package.txt
+      - uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.buildRelease.outputs.releaseName }}
-          path: "app/build/outputs/apk/release/*.apk"
-
-      - name: Upload mappings
-        if: success()
-        uses: actions/upload-artifact@v6
+          name: signed-release
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: mappings
-          path: "app/build/outputs/mapping/release"
-
-      - name: Build debug
-        id: buildDebug
+          name: test-results
+          path: app/build/reports/tests/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-mapping
+          path: app/build/outputs/mapping/release/
+      - name: Publish verified release
+        if: inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          ./gradlew :app:assembleDebug
-          echo "debugName=$(ls app/build/outputs/apk/debug/*.apk | awk -F '(/|\\.apk)' '{print $6}')" >> $GITHUB_OUTPUT
-
-      - name: Upload debug
-        if: success()
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ steps.buildDebug.outputs.debugName }}
-          path: "app/build/outputs/apk/debug/*.apk"
+          test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
+          gh release create "$RELEASE_TAG" dist/* --verify-tag \
+            --title '修复新版酷安评论接口' --notes-file docs/comment-api-release.md
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks" local.properties

@@ -15,3 +15,6 @@
 local.properties
 *.log
 .idea
+/.signing/
+*.jks
+*.keystore

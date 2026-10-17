@@ -8,6 +8,7 @@ Token V3 and synthetic DUID protocol adapted from auth.rs, auth_blob.b64 and shu
 MIT License
 
 Copyright (c) 2026 coolapk-desktop
+Copyright (c) 2026 kongwufang
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

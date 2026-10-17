@@ -19,6 +19,12 @@ object AddCookiesInterceptor : Interceptor {
         val builder: Request.Builder = request.newBuilder()
         val deviceCode = ApiDeviceIdentity.deviceCode()
         val token = CoolapkToken.generate(deviceCode, appCode = PrefManager.VERSION_CODE.toLong())
+        val captcha = CommentCaptchaSession.credential()
+        if (captcha != null && captcha.first.isNotEmpty()) {
+            builder.url(request.url.newBuilder().setQueryParameter(captcha.first, captcha.second).build())
+        }
+        val validationCookie = captcha?.takeIf { it.first.isEmpty() }
+            ?.let { "; ${CommentCaptchaSession.cookie(it.second)}" }.orEmpty()
         builder.apply {
             addHeader("User-Agent", PrefManager.USER_AGENT)
             addHeader("X-Requested-With", REQUEST_WITH)
@@ -39,9 +45,9 @@ object AddCookiesInterceptor : Interceptor {
             if (PrefManager.isLogin)
                 addHeader(
                     "Cookie",
-                    "uid=${PrefManager.uid}; username=${PrefManager.username}; token=${PrefManager.token}"
+                    "uid=${PrefManager.uid}; username=${PrefManager.username}; token=${PrefManager.token}$validationCookie"
                 )
-            else addHeader("Cookie", SESSID)
+            else addHeader("Cookie", SESSID + validationCookie)
         }
         return chain.proceed(builder.build())
     }

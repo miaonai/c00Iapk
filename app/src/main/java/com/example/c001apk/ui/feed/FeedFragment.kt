@@ -215,6 +215,18 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
     }
 
     private fun initObserve() {
+        childFragmentManager.setFragmentResultListener(
+            com.example.c001apk.view.CommentCaptchaDialog.RESULT_KEY, viewLifecycleOwner
+        ) { _, _ ->
+            viewModel.isRefreshing = viewModel.page == 1
+            viewModel.isLoadMore = viewModel.page > 1
+            viewModel.fetchFeedReply()
+        }
+        viewModel.commentCaptcha.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandledOrReturnNull()?.let {
+                com.example.c001apk.view.CommentCaptchaDialog.show(childFragmentManager, it)
+            }
+        }
         viewModel.feedUserState.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandledOrReturnNull()?.let {
                 if (it)

@@ -41,6 +41,7 @@ class Reply2ReplyBottomSheetViewModel @Inject constructor(
 
     val footerState = MutableLiveData<FooterState>()
     val totalReplyData = MutableLiveData<List<TotalReplyResponse.Data>>()
+    val commentCaptcha = MutableLiveData<Event<com.example.c001apk.util.CommentCaptcha>>()
     var oriReply: ArrayList<TotalReplyResponse.Data> = ArrayList()
 
     fun fetchReplyTotal() {
@@ -54,7 +55,16 @@ class Reply2ReplyBottomSheetViewModel @Inject constructor(
                     val replyTotalList = totalReplyData.value?.toMutableList() ?: ArrayList()
                     val reply = result.getOrNull()
                     if (reply != null) {
+                        com.example.c001apk.util.CommentCaptcha.from(reply)?.let {
+                            isRefreshing = false
+                            isLoadMore = false
+                            footerState.postValue(FooterState.LoadingError("请完成人机验证后重试"))
+                            commentCaptcha.postValue(Event(it))
+                            return@collect
+                        }
                         if (reply.message != null) {
+                            isRefreshing = false
+                            isLoadMore = false
                             footerState.postValue(FooterState.LoadingError(reply.message))
                             return@collect
                         } else if (!reply.data.isNullOrEmpty()) {

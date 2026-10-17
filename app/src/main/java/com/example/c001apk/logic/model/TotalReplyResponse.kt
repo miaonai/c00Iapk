@@ -6,9 +6,15 @@ import kotlinx.parcelize.Parcelize
 
 data class TotalReplyResponse(
     val status: Int?,
-    val error: Int?,
+    val error: com.google.gson.JsonElement?,
     val message: String?,
-    val data: List<Data>?
+    val data: List<Data>?,
+    val code: Int? = null,
+    val messageStatus: String? = null,
+    val messageExtra: com.google.gson.JsonElement? = null,
+    val extra: com.google.gson.JsonElement? = null,
+    val captchaId: String? = null,
+    val captchaField: String? = null
 ) {
 
     @Parcelize

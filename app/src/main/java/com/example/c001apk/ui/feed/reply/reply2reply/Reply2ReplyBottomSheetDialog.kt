@@ -152,6 +152,18 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment() {
     }
 
     private fun initObserve() {
+        childFragmentManager.setFragmentResultListener(
+            com.example.c001apk.view.CommentCaptchaDialog.RESULT_KEY, viewLifecycleOwner
+        ) { _, _ ->
+            viewModel.isRefreshing = viewModel.page == 1
+            viewModel.isLoadMore = viewModel.page > 1
+            viewModel.fetchReplyTotal()
+        }
+        viewModel.commentCaptcha.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandledOrReturnNull()?.let {
+                com.example.c001apk.view.CommentCaptchaDialog.show(childFragmentManager, it)
+            }
+        }
         viewModel.toastText.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandledOrReturnNull()?.let {
                 Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()

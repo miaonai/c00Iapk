@@ -79,6 +79,7 @@ class FeedViewModel @AssistedInject constructor(
     private val feedTopReplyList = ArrayList<TotalReplyResponse.Data>()
 
     val feedReplyData = MutableLiveData<List<TotalReplyResponse.Data>>()
+    val commentCaptcha = MutableLiveData<Event<com.example.c001apk.util.CommentCaptcha>>()
     val feedUserState = MutableLiveData<Event<Boolean>>()
 
     fun onFollowUnFollow(url: String, uid: String, followAuthor: Int) {
@@ -145,7 +146,16 @@ class FeedViewModel @AssistedInject constructor(
                     val feedReplyList = feedReplyData.value?.toMutableList() ?: ArrayList()
                     val data = result.getOrNull()
                     if (data != null) {
+                        com.example.c001apk.util.CommentCaptcha.from(data)?.let {
+                            isRefreshing = false
+                            isLoadMore = false
+                            footerState.postValue(FooterState.LoadingError("请完成人机验证后重试"))
+                            commentCaptcha.postValue(Event(it))
+                            return@collect
+                        }
                         if (data.message != null) {
+                            isRefreshing = false
+                            isLoadMore = false
                             footerState.postValue(FooterState.LoadingError(data.message))
                             return@collect
                         } else if (!data.data.isNullOrEmpty()) {

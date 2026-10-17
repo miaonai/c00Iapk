@@ -107,7 +107,9 @@ object PrefManager {
         set(value) = pref.edit().putString("VERSION_NAME", value).apply()
 
     var API_VERSION: String
-        get() = pref.getString("API_VERSION", Constants.API_VERSION)!!
+        get() = pref.getString("API_VERSION", Constants.API_VERSION)!!.let {
+            if (it == "13") Constants.API_VERSION else it
+        }
         set(value) = pref.edit().putString("API_VERSION", value).apply()
 
     var VERSION_CODE: String
@@ -142,6 +144,7 @@ object PrefManager {
 
     var USER_AGENT: String
         get() = pref.getString("USER_AGENT", "")!!
+            .replace("+CoolMarket/13.4.1-2312121-", "+CoolMarket/${Constants.VERSION_NAME}-${Constants.VERSION_CODE}-")
         set(value) = pref.edit().putString("USER_AGENT", value).apply()
 
     var SZLMID: String

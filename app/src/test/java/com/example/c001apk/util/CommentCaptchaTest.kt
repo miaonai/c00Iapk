@@ -30,4 +30,9 @@ class CommentCaptchaTest {
         assertEquals("", parse("""{"captchaId":"abcdef1234567890","captchaField":"id"}""")!!.field)
         assertNull(parse("""{"captchaId":"<script>alert(1)</script>"}"""))
     }
+
+    @Test fun preservesCaptchaInHttpErrorAndRejectsEmpty403() {
+        assertNotNull(CommentCaptcha.fromError("""http 403 Forbidden: {"code":403,"messageStatus":"err_request_captcha_v2"}"""))
+        assertNull(CommentCaptcha.fromError("http 403 Forbidden: "))
+    }
 }

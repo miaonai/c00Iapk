@@ -91,6 +91,13 @@ class Reply2ReplyBottomSheetViewModel @Inject constructor(
                             footerState.postValue(FooterState.LoadingEnd(LOADING_END))
                         }
                     } else {
+                        com.example.c001apk.util.CommentCaptcha.fromError(result.exceptionOrNull()?.message)?.let {
+                            isRefreshing = false
+                            isLoadMore = false
+                            footerState.postValue(FooterState.LoadingError("请完成人机验证后重试"))
+                            commentCaptcha.postValue(Event(it))
+                            return@collect
+                        }
                         isEnd = true
                         if (replyTotalList.isEmpty())
                             totalReplyData.postValue(oriReply)

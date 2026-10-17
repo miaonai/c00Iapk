@@ -4,11 +4,18 @@ import com.example.c001apk.MyApplication
 import com.example.c001apk.logic.model.TotalReplyResponse
 import com.google.gson.JsonElement
 import com.google.gson.JsonParser
+import com.google.gson.Gson
 import java.net.URLEncoder
 
 data class CommentCaptcha(val id: String, val field: String) {
     companion object {
         private const val DEFAULT_ID = "414e5c9b866a03db03f860a1a9101672"
+
+        fun fromError(message: String?): CommentCaptcha? = runCatching {
+            val start = message?.indexOf('{') ?: -1
+            if (start < 0) return@runCatching null
+            from(Gson().fromJson(message!!.substring(start), TotalReplyResponse::class.java))
+        }.getOrNull()
 
         fun from(response: TotalReplyResponse): CommentCaptcha? {
             fun configuration(element: JsonElement?): CommentCaptcha? = runCatching {

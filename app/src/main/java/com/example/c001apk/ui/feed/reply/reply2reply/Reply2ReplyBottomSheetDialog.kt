@@ -302,7 +302,7 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment() {
 
         override fun onLikeClick(type: String, id: String, isLike: Int) {
             if (PrefManager.isLogin)
-                if (PrefManager.SZLMID.isEmpty())
+                if (!com.example.c001apk.util.ApiDeviceIdentity.hasIdentity())
                     Toast.makeText(requireContext(), Constants.SZLM_ID, Toast.LENGTH_SHORT).show()
                 else
                     viewModel.onPostLikeReply(id, isLike)
@@ -317,7 +317,7 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment() {
             rPosition: Int?
         ) {
             if (PrefManager.isLogin) {
-                if (PrefManager.SZLMID == "") {
+                if (!com.example.c001apk.util.ApiDeviceIdentity.hasIdentity()) {
                     Toast.makeText(requireContext(), Constants.SZLM_ID, Toast.LENGTH_SHORT)
                         .show()
                 } else {

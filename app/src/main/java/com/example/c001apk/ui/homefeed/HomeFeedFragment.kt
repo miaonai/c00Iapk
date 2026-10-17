@@ -158,7 +158,7 @@ class HomeFeedFragment : BaseAppFragment<HomeFeedViewModel>(), IOnTabClickListen
             if (SDK_INT >= 26)
                 tooltipText = getString(R.string.publishFeed)
             setOnClickListener {
-                if (PrefManager.SZLMID == "") {
+                if (!com.example.c001apk.util.ApiDeviceIdentity.hasIdentity()) {
                     Toast.makeText(requireContext(), SZLM_ID, Toast.LENGTH_SHORT).show()
                 } else {
                     val intent = Intent(requireContext(), ReplyActivity::class.java)

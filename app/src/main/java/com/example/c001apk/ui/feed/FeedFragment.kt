@@ -158,7 +158,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                     setMargins(0, 0, 25.dp, 25.dp + height)
                 }
                 setOnClickListener {
-                    if (PrefManager.SZLMID == "") {
+                    if (!com.example.c001apk.util.ApiDeviceIdentity.hasIdentity()) {
                         Toast.makeText(requireContext(), SZLM_ID, Toast.LENGTH_SHORT).show()
                     } else {
                         viewModel.rid = viewModel.id
@@ -609,7 +609,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                 return
             }
             if (PrefManager.isLogin) {
-                if (PrefManager.SZLMID == "") {
+                if (!com.example.c001apk.util.ApiDeviceIdentity.hasIdentity()) {
                     Toast.makeText(requireContext(), SZLM_ID, Toast.LENGTH_SHORT).show()
                 } else {
                     viewModel.rid = id
@@ -626,7 +626,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
 
         override fun onLikeClick(type: String, id: String, isLike: Int) {
             if (PrefManager.isLogin)
-                if (PrefManager.SZLMID.isEmpty())
+                if (!com.example.c001apk.util.ApiDeviceIdentity.hasIdentity())
                     Toast.makeText(requireContext(), SZLM_ID, Toast.LENGTH_SHORT).show()
                 else if (type == "feed")
                     viewModel.onLikeFeed(id, isLike)

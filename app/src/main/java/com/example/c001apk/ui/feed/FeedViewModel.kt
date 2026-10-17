@@ -211,6 +211,13 @@ class FeedViewModel @AssistedInject constructor(
                             footerState.postValue(FooterState.LoadingEnd(LOADING_END))
                         }
                     } else {
+                        com.example.c001apk.util.CommentCaptcha.fromError(result.exceptionOrNull()?.message)?.let {
+                            isRefreshing = false
+                            isLoadMore = false
+                            footerState.postValue(FooterState.LoadingError("请完成人机验证后重试"))
+                            commentCaptcha.postValue(Event(it))
+                            return@collect
+                        }
                         footerState.postValue(FooterState.LoadingError(LOADING_FAILED))
                         result.exceptionOrNull()?.printStackTrace()
                     }

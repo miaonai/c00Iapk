@@ -1,6 +1,7 @@
 name: Reply scroll regression
 
 on:
+  workflow_call:
   workflow_dispatch:
   push:
     paths:
@@ -17,6 +18,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [30, 35]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,14 +42,16 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: ${{ matrix.api-level }}
           arch: x86_64
+          # The GIF dependency only ships ARM libraries; Google images translate ARM.
+          target: google_apis
           disable-animations: true
           script: ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.c001apk.ui.feed.reply.ReplyScrollTest --stacktrace
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: reply-scroll-test-results
+          name: reply-scroll-test-results-${{ matrix.api-level }}
           path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/

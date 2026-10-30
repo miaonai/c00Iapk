@@ -593,8 +593,8 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
             (binding.main as? SmoothInputLayout)?.showKeyboard()
         else
             binding.editText.let {
+                // Preserve touch mode so the feed behind this translucent window stays put.
                 it.requestFocus()
-                it.requestFocusFromTouch()
                 imm.showSoftInput(it, InputMethodManager.SHOW_IMPLICIT)
             }
     }

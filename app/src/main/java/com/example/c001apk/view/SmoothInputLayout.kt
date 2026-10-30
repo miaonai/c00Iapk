@@ -305,8 +305,8 @@ class SmoothInputLayout : LinearLayout {
             }
         }
         if (focus) {
+            // Keep touch mode: leaving it can focus and scroll the window behind us.
             mInputView?.requestFocus()
-            mInputView?.requestFocusFromTouch()
         } else {
             if (mInputView != null) {
                 isFocusable = true
@@ -335,8 +335,8 @@ class SmoothInputLayout : LinearLayout {
      */
     fun showKeyboard() {
         mInputView?.let {
+            // EditText already accepts focus in touch mode; preserve the background position.
             it.requestFocus()
-            it.requestFocusFromTouch()
             imm.showSoftInput(it, InputMethodManager.SHOW_IMPLICIT)
         }
     }

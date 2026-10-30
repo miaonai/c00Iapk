@@ -10,7 +10,11 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.platform.app.InstrumentationRegistry
+import com.example.c001apk.R
 import com.example.c001apk.testing.ReplyScrollTestActivity
 import com.example.c001apk.view.SmoothInputLayout
 import org.junit.Assert.assertEquals
@@ -69,11 +73,18 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
                     reply = instrumentation.waitForMonitorWithTimeout(monitor, 5000) as? ReplyActivity
                     val opened = checkNotNull(reply) { "ReplyActivity did not open" }
                     settle()
-                    awaitKeyboard(opened)
                     instrumentation.runOnMainSync {
                         assertEquals("Background moved on $entry open #$attempt", before, anchors(host))
                         assertTrue("Opening reply must preserve touch mode", host.feed.isInTouchMode)
                         assertTrue("Editor must receive focus", opened.binding.editText.hasFocus())
+                    }
+                    // A cold emulator can reject the existing 150ms auto-show request before
+                    // the editor is served. Test keyboard input after a real tap, independently
+                    // of the opening-position assertion above.
+                    onView(withId(R.id.editText)).perform(click())
+                    awaitKeyboard(opened)
+                    instrumentation.runOnMainSync {
+                        assertEquals("Keyboard moved the background", before, anchors(host))
                         assertTrue("Keyboard must open", ViewCompat.getRootWindowInsets(
                             opened.binding.root
                         )?.isVisible(WindowInsetsCompat.Type.ime()) == true)

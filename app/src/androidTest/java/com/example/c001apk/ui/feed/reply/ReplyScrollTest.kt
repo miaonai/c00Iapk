@@ -3,6 +3,8 @@ package com.example.c001apk.ui.feed.reply
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -32,16 +34,18 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
                 scenario.onActivity { it.showReplies() }
                 settle()
             }
-            // Open, cancel/reopen without scrolling, then scroll and open again.
-            repeat(3) { attempt ->
-                instrumentation.setInTouchMode(true)
+            // Open, cancel/reopen, scroll again, then return to the top.
+            repeat(4) { attempt ->
+                enterTouchMode(scenario)
                 if (attempt != 1) {
                     scenario.onActivity { host ->
                         (host.feed.layoutManager as LinearLayoutManager)
-                            .scrollToPositionWithOffset(12 + attempt * 5, -37)
+                            .scrollToPositionWithOffset(if (attempt == 3) 0 else 12 + attempt * 5,
+                                if (attempt == 3) 0 else -37)
                         host.replies?.let {
                             (it.layoutManager as LinearLayoutManager)
-                                .scrollToPositionWithOffset(8 + attempt * 5, -53)
+                                .scrollToPositionWithOffset(if (attempt == 3) 0 else 8 + attempt * 5,
+                                    if (attempt == 3) 0 else -53)
                         }
                     }
                 }
@@ -63,9 +67,9 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
                             .putExtra("username", "Test user"))
                     }
                     reply = instrumentation.waitForMonitorWithTimeout(monitor, 5000) as? ReplyActivity
-                    checkNotNull(reply) { "ReplyActivity did not open" }
+                    val opened = checkNotNull(reply) { "ReplyActivity did not open" }
                     settle()
-                    val opened = reply
+                    awaitKeyboard(opened)
                     instrumentation.runOnMainSync {
                         assertEquals("Background moved on $entry open #$attempt", before, anchors(host))
                         assertTrue("Opening reply must preserve touch mode", host.feed.isInTouchMode)
@@ -104,6 +108,40 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
             check(position != RecyclerView.NO_POSITION)
             position to checkNotNull(manager.findViewByPosition(position)).top
         }
+
+    private fun enterTouchMode(scenario: ActivityScenario<ReplyScrollTestActivity>) {
+        var x = 0f
+        var y = 0f
+        scenario.onActivity { host ->
+            val list = host.replies ?: host.feed
+            val location = IntArray(2)
+            list.getLocationOnScreen(location)
+            x = location[0] + list.width / 2f
+            y = location[1] + list.height / 2f
+        }
+        val downTime = SystemClock.uptimeMillis()
+        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x, y, 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            instrumentation.sendPointerSync(event)
+            event.recycle()
+        }
+        settle()
+    }
+
+    private fun awaitKeyboard(reply: ReplyActivity) {
+        val deadline = SystemClock.uptimeMillis() + 5000
+        while (SystemClock.uptimeMillis() < deadline) {
+            var visible = false
+            instrumentation.runOnMainSync {
+                visible = ViewCompat.getRootWindowInsets(reply.binding.root)
+                    ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            }
+            if (visible) return
+            SystemClock.sleep(100)
+        }
+        // The assertion below reports failure after allowing a cold IME to start.
+    }
 
     private fun settle() {
         // Includes ReplyActivity's delayed keyboard request and window/IME transitions.

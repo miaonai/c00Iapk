@@ -12,7 +12,11 @@ permissions:
   contents: write
 
 jobs:
+  reply-scroll-tests:
+    uses: ./.github/workflows/reply-scroll-tests.yml
+
   build:
+    needs: reply-scroll-tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -54,13 +58,13 @@ jobs:
           set -euo pipefail
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
           mkdir -p dist
-          cp app/build/outputs/apk/release/*.apk dist/c001apk-comments-release.apk
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs dist/c001apk-comments-release.apk | tee dist/signature.txt
+          cp app/build/outputs/apk/release/*.apk dist/c001apk-release.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs dist/c001apk-release.apk | tee dist/signature.txt
           EXPECTED_CERT=$(keytool -exportcert -keystore "$RUNNER_TEMP/release.jks" -alias "$KEY_ALIAS" -storepass:env KEYSTORE_PASSWORD | sha256sum | cut -d' ' -f1)
           ACTUAL_CERT=$(sed -n 's/.*Signer.*certificate SHA-256 digest: //p' dist/signature.txt | head -1)
           test "$EXPECTED_CERT" = "$ACTUAL_CERT"
-          "$BUILD_TOOLS/aapt" dump badging dist/c001apk-comments-release.apk > dist/package.txt
-          (cd dist && sha256sum c001apk-comments-release.apk > SHA256SUMS)
+          "$BUILD_TOOLS/aapt" dump badging dist/c001apk-release.apk > dist/package.txt
+          (cd dist && sha256sum c001apk-release.apk > SHA256SUMS)
           head -1 dist/package.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -84,7 +88,7 @@ jobs:
         run: |
           test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
           gh release create "$RELEASE_TAG" dist/* --verify-tag \
-            --title '修复新版酷安评论接口' --notes-file docs/comment-api-release.md
+            --title '修复回复窗口导致动态页面跳动' --notes-file docs/reply-scroll-release.md
       - name: Remove signing material
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks" local.properties

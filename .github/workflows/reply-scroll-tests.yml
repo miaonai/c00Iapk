@@ -4,6 +4,7 @@ on:
   workflow_call:
   workflow_dispatch:
   push:
+    branches: ['**']
     paths:
       - '.github/workflows/reply-scroll-tests.yml'
       - 'app/src/androidTest/**'

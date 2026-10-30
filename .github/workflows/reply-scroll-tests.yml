@@ -2,6 +2,13 @@ name: Reply scroll regression
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/reply-scroll-tests.yml'
+      - 'app/src/androidTest/**'
+      - 'app/src/debug/**'
+      - 'app/src/main/java/com/example/c001apk/ui/feed/reply/**'
+      - 'app/src/main/java/com/example/c001apk/view/SmoothInputLayout.kt'
 
 permissions:
   contents: read

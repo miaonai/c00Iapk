@@ -17,7 +17,6 @@ class ReplyScrollTestActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestedOrientation = intent.getIntExtra("orientation", -1)
         feed = createList()
         setContentView(feed)
     }

@@ -1,7 +1,9 @@
 package com.example.c001apk.ui.feed.reply
 
+import android.app.UiAutomation
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
@@ -17,8 +19,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.example.c001apk.R
 import com.example.c001apk.testing.ReplyScrollTestActivity
 import com.example.c001apk.view.SmoothInputLayout
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -27,11 +31,25 @@ import org.junit.runners.Parameterized
 class ReplyScrollTest(private val orientation: Int, private val entry: String) {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
+    @Before
+    fun rotateDevice() {
+        // Rotate the device, not just the host: the translucent activity must keep
+        // the same orientation instead of rotating back on launch.
+        assertTrue(instrumentation.uiAutomation.setRotation(
+            if (orientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+                UiAutomation.ROTATION_FREEZE_0 else UiAutomation.ROTATION_FREEZE_90
+        ))
+    }
+
+    @After
+    fun restoreRotation() {
+        instrumentation.uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
+    }
+
     @Test
     fun openingAndReopeningReplyPreservesBackgroundPosition() {
         val context = instrumentation.targetContext
         val intent = Intent(context, ReplyScrollTestActivity::class.java)
-            .putExtra("orientation", orientation)
         ActivityScenario.launch<ReplyScrollTestActivity>(intent).use { scenario ->
             settle()
             if (entry == "nested") {
@@ -74,6 +92,10 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
                     val opened = checkNotNull(reply) { "ReplyActivity did not open" }
                     settle()
                     instrumentation.runOnMainSync {
+                        assertEquals("Reply must keep the device orientation",
+                            if (orientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+                                Configuration.ORIENTATION_PORTRAIT else Configuration.ORIENTATION_LANDSCAPE,
+                            opened.resources.configuration.orientation)
                         assertEquals("Background moved on $entry open #$attempt", before, anchors(host))
                         assertTrue("Opening reply must preserve touch mode", host.feed.isInTouchMode)
                         assertTrue("Editor must receive focus", opened.binding.editText.hasFocus())
@@ -81,7 +103,9 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
                     // A cold emulator can reject the existing 150ms auto-show request before
                     // the editor is served. Test keyboard input after a real tap, independently
                     // of the opening-position assertion above.
-                    onView(withId(R.id.editText)).perform(click())
+                    if (!isKeyboardVisible(opened)) {
+                        onView(withId(R.id.editText)).perform(click())
+                    }
                     awaitKeyboard(opened)
                     instrumentation.runOnMainSync {
                         assertEquals("Keyboard moved the background", before, anchors(host))
@@ -143,15 +167,19 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
     private fun awaitKeyboard(reply: ReplyActivity) {
         val deadline = SystemClock.uptimeMillis() + 5000
         while (SystemClock.uptimeMillis() < deadline) {
-            var visible = false
-            instrumentation.runOnMainSync {
-                visible = ViewCompat.getRootWindowInsets(reply.binding.root)
-                    ?.isVisible(WindowInsetsCompat.Type.ime()) == true
-            }
-            if (visible) return
+            if (isKeyboardVisible(reply)) return
             SystemClock.sleep(100)
         }
         // The assertion below reports failure after allowing a cold IME to start.
+    }
+
+    private fun isKeyboardVisible(reply: ReplyActivity): Boolean {
+        var visible = false
+        instrumentation.runOnMainSync {
+            visible = ViewCompat.getRootWindowInsets(reply.binding.root)
+                ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        }
+        return visible
     }
 
     private fun settle() {

@@ -22,7 +22,6 @@ import com.example.c001apk.view.SmoothInputLayout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -31,7 +30,6 @@ import org.junit.runners.Parameterized
 class ReplyScrollTest(private val orientation: Int, private val entry: String) {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
-    @Before
     fun rotateDevice() {
         // Rotate the device, not just the host: the translucent activity must keep
         // the same orientation instead of rotating back on launch.
@@ -51,6 +49,9 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
         val context = instrumentation.targetContext
         val intent = Intent(context, ReplyScrollTestActivity::class.java)
         ActivityScenario.launch<ReplyScrollTestActivity>(intent).use { scenario ->
+            // Rotate after ActivityScenario's bootstrap/home transitions have finished.
+            rotateDevice()
+            awaitOrientation(scenario)
             settle()
             if (entry == "nested") {
                 scenario.onActivity { it.showReplies() }
@@ -162,6 +163,22 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
             event.recycle()
         }
         settle()
+    }
+
+    private fun awaitOrientation(scenario: ActivityScenario<ReplyScrollTestActivity>) {
+        val expected = if (orientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+            Configuration.ORIENTATION_PORTRAIT else Configuration.ORIENTATION_LANDSCAPE
+        val deadline = SystemClock.uptimeMillis() + 5000
+        do {
+            var actual = Configuration.ORIENTATION_UNDEFINED
+            scenario.onActivity { actual = it.resources.configuration.orientation }
+            if (actual == expected) return
+            SystemClock.sleep(100)
+        } while (SystemClock.uptimeMillis() < deadline)
+        scenario.onActivity {
+            assertEquals("Device rotation did not reach the background activity",
+                expected, it.resources.configuration.orientation)
+        }
     }
 
     private fun awaitKeyboard(reply: ReplyActivity) {

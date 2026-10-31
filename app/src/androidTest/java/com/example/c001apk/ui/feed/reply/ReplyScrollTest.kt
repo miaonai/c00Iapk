@@ -19,7 +19,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.example.c001apk.R
 import com.example.c001apk.testing.ReplyScrollTestActivity
 import com.example.c001apk.view.SmoothInputLayout
-import org.junit.After
+import org.junit.AfterClass
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,18 +30,13 @@ import org.junit.runners.Parameterized
 class ReplyScrollTest(private val orientation: Int, private val entry: String) {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
-    fun rotateDevice() {
+    private fun rotateDevice() {
         // Rotate the device, not just the host: the translucent activity must keep
         // the same orientation instead of rotating back on launch.
         assertTrue(instrumentation.uiAutomation.setRotation(
             if (orientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
                 UiAutomation.ROTATION_FREEZE_0 else UiAutomation.ROTATION_FREEZE_90
         ))
-    }
-
-    @After
-    fun restoreRotation() {
-        instrumentation.uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
     }
 
     @Test
@@ -206,6 +201,15 @@ class ReplyScrollTest(private val orientation: Int, private val entry: String) {
     }
 
     companion object {
+        @JvmStatic
+        @AfterClass
+        fun restoreRotation() {
+            // Keep consecutive cases in the same orientation. Unlocking after each
+            // case races Android 15's rotation-lock settings when the next case starts.
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(UiAutomation.ROTATION_UNFREEZE)
+        }
+
         @JvmStatic
         @Parameterized.Parameters(name = "orientation={0}, entry={1}")
         fun cases() = listOf(
